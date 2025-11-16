@@ -26,6 +26,15 @@ export default function Header() {
             </li>
           </ul>
         </nav>
+        {/* <button
+          onClick={() => {
+            localStorage.removeItem("token");
+            window.location.href = "/";
+          }}
+          className="bg-red-600 text-white px-4 py-2 rounded"
+        >
+          Logout
+        </button> */}
       </div>
     </header>
   );

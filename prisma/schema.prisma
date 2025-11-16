@@ -13,25 +13,12 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-model Profile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  fullName  String?
-  avatarUrl String?
-  bio       String?
-  createdAt DateTime @default(now())
-
-  @@map("profiles")
-}
 
 model User {
-  id        String   @id @default(uuid())
+  id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
   name      String?
-  avatar    String?
-  bio       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
 }
