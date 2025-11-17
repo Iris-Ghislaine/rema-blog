@@ -1,24 +1,35 @@
 import { NextRequest, NextResponse } from "next/server"
-import { v2 as cloudinary } from "cloudinary"
-
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-})
 
 export async function POST(req: NextRequest) {
-  const { image } = await req.json()
-
   try {
-    const result = await cloudinary.uploader.upload(image, {
-      upload_preset: "rema_blog_unsigned",
-      folder: "rema-blog",
-    })
+    const formData = await req.formData()
+    const file = formData.get("image") as File
 
-    return NextResponse.json({ url: result.secure_url })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!file) return NextResponse.json({ error: "No file" }, { status: 400 })
+
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+    const base64 = `data:${file.type};base64,${buffer.toString("base64")}`
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file: base64,
+          upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
+        }),
+      }
+    )
+
+    const data = await res.json()
+    if (data.secure_url) {
+      return NextResponse.json({ url: data.secure_url })
+    } else {
+      return NextResponse.json({ error: "Upload failed" }, { status: 500 })
+    }
+  } catch (error) {
+    return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 }
