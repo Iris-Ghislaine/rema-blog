@@ -21,4 +21,16 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  posts     Post[]   @relation("UserPosts")
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   @db.Text
+  published Boolean  @default(true)
+  authorId  Int
+ author User @relation("UserPosts", fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
