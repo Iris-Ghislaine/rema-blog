@@ -5,13 +5,15 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file = formData.get("image") as File
 
-    if (!file) return NextResponse.json({ error: "No file" }, { status: 400 })
+    if (!file) {
+      return NextResponse.json({ error: "No file uploaded" }, { status: 400 })
+    }
 
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     const base64 = `data:${file.type};base64,${buffer.toString("base64")}`
 
-    const res = await fetch(
+    const uploadResponse = await fetch(
       `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
       {
         method: "POST",
@@ -23,13 +25,16 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    const data = await res.json()
-    if (data.secure_url) {
-      return NextResponse.json({ url: data.secure_url })
+    const result = await uploadResponse.json()
+
+    if (result.secure_url) {
+      return NextResponse.json({ url: result.secure_url })
     } else {
+      console.error("Cloudinary error:", result)
       return NextResponse.json({ error: "Upload failed" }, { status: 500 })
     }
   } catch (error) {
+    console.error("Upload error:", error)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 }

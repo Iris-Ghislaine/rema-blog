@@ -2,8 +2,14 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import JoditEditor from "jodit-react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
+
+// THIS FIXES THE "self is not defined" ERROR
+const JoditEditor = dynamic(() => import("jodit-react"), {
+  ssr: false,
+  loading: () => <p className="text-white text-center py-20">Loading editor...</p>,
+})
 
 export default function WritePage() {
   const editor = useRef<any>(null)
