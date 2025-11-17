@@ -4,8 +4,8 @@
 import { useEffect, useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
-// THIS FIXES THE "self is not defined" ERROR
 const JoditEditor = dynamic(() => import("jodit-react"), {
   ssr: false,
   loading: () => <p className="text-white text-center py-20">Loading editor...</p>,
@@ -15,6 +15,8 @@ export default function WritePage() {
   const editor = useRef<any>(null)
   const [content, setContent] = useState("")
   const [title, setTitle] = useState("")
+  const [coverImage, setCoverImage] = useState<string>("")
+  const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const router = useRouter()
@@ -30,14 +32,36 @@ export default function WritePage() {
       const draft = JSON.parse(saved)
       setTitle(draft.title || "")
       setContent(draft.content || "")
+      setCoverImage(draft.coverImage || "")
     }
   }, [])
 
   const saveDraft = () => {
     setSaving(true)
-    const draft = { title, content, savedAt: new Date().toISOString() }
+    const draft = { title, content, coverImage, savedAt: new Date().toISOString() }
     localStorage.setItem("draft", JSON.stringify(draft))
     setTimeout(() => setSaving(false), 800)
+  }
+
+  const uploadCover = async (file: File) => {
+    setUploading(true)
+    const formData = new FormData()
+    formData.append("files[0]", file)
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.url) {
+        setCoverImage(data.url)
+      }
+    } catch (err) {
+      alert("Cover upload failed")
+    } finally {
+      setUploading(false)
+    }
   }
 
   const publishPost = async () => {
@@ -54,13 +78,13 @@ export default function WritePage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({ title, content }),
+        body: JSON.stringify({ title, content, coverImage }),
       })
 
       if (res.ok) {
-        localStorage.removeItem("draft") // clear draft
+        localStorage.removeItem("draft")
         alert("Published successfully!")
-        router.push("/") // go to home/feed
+        router.push("/")
       } else {
         alert("Failed to publish")
       }
@@ -78,19 +102,19 @@ export default function WritePage() {
     toolbarSticky: true,
     buttons: "bold,italic,underline,|,link,image,video,|,ul,ol,|,outdent,indent,|,fontsize,brush,|,align,table,|,source",
     style: { background: "#0f172a", color: "#e2e8f0", font: "16px 'Inter', sans-serif" },
-  uploader: {
-  url: "/api/upload",
-  format: "json",
-  insertImageAsBase64URI: false,
-  filesVariableName: () => "files[0]",
-  isSuccess: (resp: any) => !!resp.url,
-  process: (resp: any) => ({ files: [resp.url] }),
-  defaultHandlerSuccess: function (data: any) {
-    if (data.files?.[0] && editor.current) {
-      editor.current.selection.insertImage(data.files[0], null, 600)
-    }
-  },
-},
+    uploader: {
+      url: "/api/upload",
+      format: "json",
+      insertImageAsBase64URI: false,
+      filesVariableName: () => "files[0]",
+      isSuccess: (resp: any) => !!resp.url,
+      process: (resp: any) => ({ files: [resp.url] }),
+      defaultHandlerSuccess: function (data: any) {
+        if (data.files?.[0] && editor.current) {
+          editor.current.selection.insertImage(data.files[0], null, 600)
+        }
+      },
+    },
   }
 
   return (
@@ -98,7 +122,7 @@ export default function WritePage() {
       <div className="max-w-6xl mx-auto">
         <div className="glass p-8 mb-6 rounded-2xl">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-4xl font-bold ">Write Your Story</h1>
+            <h1 className="text-4xl font-bold text-white">Write Your Story</h1>
             <div className="flex gap-4">
               <button onClick={saveDraft} className="bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded-lg font-medium transition-all shadow-lg">
                 {saving ? "Saved!" : "Save Draft"}
@@ -113,12 +137,42 @@ export default function WritePage() {
             </div>
           </div>
 
+          {/* COVER IMAGE UPLOADER */}
+          <div className="mb-10">
+            {coverImage ? (
+              <div className="relative rounded-xl overflow-hidden border-4 border-emerald-500">
+                <Image src={coverImage} alt="Cover" width={1200} height={600} className="w-full h-96 object-cover" />
+                <button
+                  onClick={() => setCoverImage("")}
+                  className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white p-3 rounded-full shadow-lg"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <label className="block cursor-pointer">
+                <div className="border-4 border-dashed border-emerald-500 rounded-xl p-16 text-center hover:border-emerald-400 transition">
+                  <div className="text-6xl mb-4">Upload Cover Image</div>
+                  <p className="text-emerald-300">Click or drag & drop</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])}
+                  className="hidden"
+                  disabled={uploading}
+                />
+              </label>
+            )}
+            {uploading && <p className="text-emerald-400 text-center mt-4">Uploading cover...</p>}
+          </div>
+
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Enter your amazing title..."
-            className="w-full text-5xl font-bold bg-transparent  placeholder-emerald-400 border-none outline-none mb-10 resize-none"
+            className="w-full text-5xl font-bold bg-transparent text-white placeholder-emerald-400 border-none outline-none mb-10 resize-none"
           />
 
           <JoditEditor

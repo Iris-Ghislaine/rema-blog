@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: number }
-    const { title, content } = await req.json()
+    const { title, content,coverImage } = await req.json()
 
     if (!title || !content) {
       return NextResponse.json({ error: "Title and content required" }, { status: 400 })
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       data: {
         title,
         content,
+        coverImage,
         authorId: decoded.id,
         published: true,
       },
