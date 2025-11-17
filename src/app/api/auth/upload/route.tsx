@@ -1,19 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
-    const file = formData.get("image") as File
+
+    
+    const file = formData.get("files[0]") as File || formData.get("file") as File || formData.get("image") as File
 
     if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 })
+      return NextResponse.json({ error: "No file received" }, { status: 400 })
     }
 
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     const base64 = `data:${file.type};base64,${buffer.toString("base64")}`
 
-    const uploadResponse = await fetch(
+    const res = await fetch(
       `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
       {
         method: "POST",
@@ -25,16 +28,22 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    const result = await uploadResponse.json()
+    const data = await res.json()
 
-    if (result.secure_url) {
-      return NextResponse.json({ url: result.secure_url })
+    if (data.secure_url) {
+      return NextResponse.json({ url: data.secure_url })
     } else {
-      console.error("Cloudinary error:", result)
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 })
+      console.error("Cloudinary failed:", data)
+      return NextResponse.json({ error: "Upload failed", details: data }, { status: 500 })
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Upload error:", error)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return NextResponse.json({ error: "Server error", message: error.message }, { status: 500 })
   }
+}
+
+export const config = {
+  api: {
+    bodyParser: false, // REQUIRED FOR FILE UPLOADS
+  },
 }

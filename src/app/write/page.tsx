@@ -78,19 +78,19 @@ export default function WritePage() {
     toolbarSticky: true,
     buttons: "bold,italic,underline,|,link,image,video,|,ul,ol,|,outdent,indent,|,fontsize,brush,|,align,table,|,source",
     style: { background: "#0f172a", color: "#e2e8f0", font: "16px 'Inter', sans-serif" },
-    uploader: {
-      url: "/api/upload",
-      format: "json",
-      insertImageAsBase64URI: false,
-      imagesVariableName: "image",
-      isSuccess: (resp: any) => !!resp.url,
-      process: (resp: any) => ({ files: [resp.url] }),
-      defaultHandlerSuccess: function (data: any) {
-        if (data.files?.[0] && editor.current) {
-          editor.current.selection.insertImage(data.files[0], null, 600)
-        }
-      },
-    },
+  uploader: {
+  url: "/api/upload",
+  format: "json",
+  insertImageAsBase64URI: false,
+  filesVariableName: () => "files[0]",
+  isSuccess: (resp: any) => !!resp.url,
+  process: (resp: any) => ({ files: [resp.url] }),
+  defaultHandlerSuccess: function (data: any) {
+    if (data.files?.[0] && editor.current) {
+      editor.current.selection.insertImage(data.files[0], null, 600)
+    }
+  },
+},
   }
 
   return (
