@@ -24,17 +24,12 @@ export default function Header() {
                 Write
               </Link>
             </li>
+<li><Link href="/profile" className="hover:text-emerald-300 transition">
+  Profile
+</Link></li>
+
           </ul>
         </nav>
-        {/* <button
-          onClick={() => {
-            localStorage.removeItem("token");
-            window.location.href = "/";
-          }}
-          className="bg-red-600 text-white px-4 py-2 rounded"
-        >
-          Logout
-        </button> */}
       </div>
     </header>
   );
