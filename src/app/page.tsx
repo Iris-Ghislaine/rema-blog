@@ -8,11 +8,32 @@ export const revalidate = 10 // Refresh every 10 seconds
 
 export default async function Home() {
   const posts = await prisma.post.findMany({
-    where: { published: true },
-    include: { author: true },
+    where: { published: true, deletedAt: null },
+    include: {
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+        },
+      },
+      tags: {
+        include: {
+          tag: true,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
+    take: 20,
   })
-
+  
   return (
     <div className="min-h-screen py-12 px-6 bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900">
       <div className="max-w-7xl mx-auto">
@@ -77,6 +98,20 @@ export default async function Home() {
                       {post.content.replace(/<[^>]*>/g, "").slice(0, 140)}...
                     </p>
 
+                    {/* Tags */}
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {post.tags.slice(0, 3).map((postTag) => (
+                          <span
+                            key={postTag.tag.id}
+                            className="px-2 py-1 bg-emerald-600/20 text-emerald-300 rounded-full text-xs"
+                          >
+                            #{postTag.tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Author & Date */}
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-3">
@@ -92,9 +127,16 @@ export default async function Home() {
                           </p>
                         </div>
                       </div>
-                      <span className="text-emerald-400 font-medium group-hover:translate-x-2 transition">
-                        Read →
-                      </span>
+                      <div className="text-right">
+                        <span className="text-emerald-400 font-medium group-hover:translate-x-2 transition block">
+                          Read →
+                        </span>
+                        {post._count && (
+                          <span className="text-xs text-gray-400">
+                            {post._count.likes} ❤️ • {post._count.comments} 💬
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </article>

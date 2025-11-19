@@ -16,6 +16,8 @@ export default function WritePage() {
   const [content, setContent] = useState("")
   const [title, setTitle] = useState("")
   const [coverImage, setCoverImage] = useState<string>("")
+  const [tags, setTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState("")
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -33,14 +35,27 @@ export default function WritePage() {
       setTitle(draft.title || "")
       setContent(draft.content || "")
       setCoverImage(draft.coverImage || "")
+      setTags(draft.tags || [])
     }
   }, [])
 
   const saveDraft = () => {
     setSaving(true)
-    const draft = { title, content, coverImage, savedAt: new Date().toISOString() }
+    const draft = { title, content, coverImage, tags, savedAt: new Date().toISOString() }
     localStorage.setItem("draft", JSON.stringify(draft))
     setTimeout(() => setSaving(false), 800)
+  }
+
+  const addTag = () => {
+    const tag = tagInput.trim()
+    if (tag && !tags.includes(tag)) {
+      setTags([...tags, tag])
+      setTagInput("")
+    }
+  }
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter((t) => t !== tagToRemove))
   }
 
   const uploadCover = async (file: File) => {
@@ -63,37 +78,42 @@ export default function WritePage() {
       setUploading(false)
     }
   }
-
-  const publishPost = async () => {
-    if (!title.trim() || !content.trim()) {
-      alert("Title and content are required!")
-      return
-    }
-
-    setPublishing(true)
-    try {
-      const res = await fetch("/api/posts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({ title, content, coverImage }),
-      })
-
-      if (res.ok) {
-        localStorage.removeItem("draft")
-        alert("Published successfully!")
-        router.push("/")
-      } else {
-        alert("Failed to publish")
-      }
-    } catch (err) {
-      alert("Error publishing post")
-    } finally {
-      setPublishing(false)
-    }
+const publishPost = async () => {
+  if (!title.trim() || !content.trim()) {
+    alert("Title and content are required!")
+    return
   }
+
+  setPublishing(true)
+  const urlParams = new URLSearchParams(window.location.search)
+  const editId = urlParams.get("edit")
+
+  try {
+    const method = editId ? "PUT" : "POST"
+    const url = editId ? `/api/posts/${editId}` : "/api/posts"
+
+    const res = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({ title, content, coverImage, tags }),
+    })
+
+    if (res.ok) {
+      localStorage.removeItem("draft")
+      alert(editId ? "Post updated!" : "Published successfully!")
+      router.push("/profile")
+    } else {
+      alert("Failed to save")
+    }
+  } catch (err) {
+    alert("Error")
+  } finally {
+    setPublishing(false)
+  }
+}
 
   const config = {
     readonly: false,
@@ -117,6 +137,29 @@ export default function WritePage() {
     },
   }
 
+  // Add this useEffect at the top (after your other useEffects)
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const editId = urlParams.get("edit")
+
+  if (editId) {
+    const token = localStorage.getItem("token")
+    fetch(`/api/posts/${editId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.post) {
+          setTitle(data.post.title)
+          setContent(data.post.content)
+          setCoverImage(data.post.coverImage || "")
+          setTags(data.post.tags?.map((pt: any) => pt.tag.name) || [])
+        }
+      })
+      .catch(() => alert("Failed to load post for editing"))
+  }
+}, [])
+
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-6xl mx-auto">
@@ -137,7 +180,7 @@ export default function WritePage() {
             </div>
           </div>
 
-          {/* COVER IMAGE UPLOADER */}
+          
           <div className="mb-10">
             {coverImage ? (
               <div className="relative rounded-xl overflow-hidden border-4 border-emerald-500">
@@ -172,8 +215,52 @@ export default function WritePage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Enter your amazing title..."
-            className="w-full text-5xl font-bold bg-transparent text-white placeholder-emerald-400 border-none outline-none mb-10 resize-none"
+            className="w-full text-5xl font-bold bg-transparent text-white placeholder-emerald-400 border-none outline-none mb-6 resize-none"
           />
+
+          {/* Tags Input */}
+          <div className="mb-10">
+            <label className="block text-white font-medium mb-2">Tags</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 bg-emerald-600/30 text-emerald-300 rounded-full text-sm flex items-center gap-2"
+                >
+                  #{tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    className="hover:text-red-400"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    addTag()
+                  }
+                }}
+                placeholder="Add a tag and press Enter"
+                className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={addTag}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
+              >
+                Add
+              </button>
+            </div>
+          </div>
 
           <JoditEditor
             ref={editor}
